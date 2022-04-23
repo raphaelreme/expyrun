@@ -1,0 +1,5 @@
+-e .
+black
+mypy
+pylint
+types-pyyaml

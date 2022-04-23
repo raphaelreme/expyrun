@@ -1,0 +1,4 @@
+training:
+  lr: 0.01
+  batch_size: 64
+  epoch: 10

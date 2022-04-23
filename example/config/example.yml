@@ -1,0 +1,13 @@
+__default__:
+  - ./scheduler.yml
+  - ./data.yml
+  - ./train.yml
+
+__run__:
+  __main__: src.hello:main
+  __output_dir__: /tmp/expyrun/test
+  __name__: "example-{training.batch_size}-{training.lr}"
+
+
+training:
+  lr: 10.0
