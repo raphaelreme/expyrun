@@ -9,8 +9,9 @@ When an experiment is launched:
 2- Then the output directory is created.
 3- It's then filled with
     a- The built configuration file (with resolved dependencies): config.yml
-    b- Frozen requirements: frozen_requirements.txt
-    c- Copy of all the code in the package of the main function
+    b- The built configuration file but unparsed: raw_config.yml
+    c- Frozen requirements: frozen_requirements.txt
+    d- Copy of all the code in the package of the main function
 4- The output directory is registered as the current directory and is set in sys.path.
    You can therefore write directly in the current directory in the main function.
 5- Finally the main function is loaded and run.
@@ -30,7 +31,7 @@ import importlib
 import os
 import pathlib
 import sys
-from typing import cast, List, TextIO, Union
+from typing import Dict, cast, List, TextIO, Union
 import warnings
 
 from pip._internal.operations import freeze
@@ -128,7 +129,7 @@ def build_config(config_file: str, args: List[str]) -> config.Config:
 
         cfg[key] = convert_as(cfg[key], arg)
 
-    return config.Parser(cfg).parse()
+    return config.config_unflatten(cfg)
 
 
 def _code_copy(src_path: pathlib.Path, dest_path: pathlib.Path) -> None:
@@ -162,18 +163,21 @@ def duplicate_code(code_dir: pathlib.Path, output_dir: pathlib.Path, module_name
     _code_copy(package_path, output_dir)
 
 
-def main(cfg: dict, debug: bool):
+def main(cfg: config.Config, debug: bool):
     """Prepare and launch the experiment
 
     Args:
         cfg (dict): Configuration
         debug (bool): Use DEBUG mode
     """
+    raw_cfg = cfg
+    cfg = config.Parser(cfg).parse()  # Resolve self and env references
+
     # Load the run data
-    module_name, func_name = str(cfg["__run__"]["__main__"]).split(":")
-    experiment_name = str(cfg["__run__"]["__name__"])
-    output_dir = pathlib.Path(cfg["__run__"]["__output_dir__"])
-    code_dir = pathlib.Path(cfg["__run__"].get("__code__", os.getcwd()))
+    module_name, func_name = cast(Dict[str, str], cfg["__run__"])["__main__"].split(":")
+    experiment_name = cast(Dict[str, str], cfg["__run__"])["__name__"]
+    output_dir = pathlib.Path(cast(Dict[str, str], cfg["__run__"])["__output_dir__"])
+    code_dir = pathlib.Path(cast(Dict[str, str], cfg["__run__"]).get("__code__", os.getcwd()))
 
     # Compute true output dir
     if debug:
@@ -193,10 +197,12 @@ def main(cfg: dict, debug: bool):
         sys.path.insert(0, str(code_dir))
     else:
         duplicate_code(code_dir, output_dir, module_name)
-        cfg["__run__"]["__code__"] = str(output_dir)
+        cast(Dict[str, str], raw_cfg["__run__"])["__code__"] = str(output_dir)
+        cast(Dict[str, str], cfg["__run__"])["__code__"] = str(output_dir)
         sys.path.insert(0, str(output_dir))
 
     config.save_config(cfg, output_dir / "config.yml")
+    config.save_config(raw_cfg, output_dir / "raw_config.yml")
     (output_dir / "frozen_requirements.txt").write_text("\n".join(freeze.freeze()))
 
     os.chdir(output_dir)

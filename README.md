@@ -39,7 +39,17 @@ You only have to adapt your code to be executable from an main function expectin
 and a dict configuration for the run. Note that you should probably look at dacite and dataclasses
 to create nicely typed configuration in your code. But this is out of the scope of expyrun.
 
-## Create configuration files
+Expyrun will create an experiment folder in which it will put the configuration (and raw configuration,
+see the example), frozen requirements, and a copy of the source code. Almost everything you need to run
+your experiment again. It will also redirect your stdout and stderr to outputs.log file.
+
+Note that from your function perspective, the current working directory is this experiment directory,
+therefore results (model weights, data preprocessing, etc) can be saved directly in it.
+
+Expyrun does not try to copy all your dependencies (for instance data read by your code), as this
+would be too heavy. You are responsible to keep the data the code reads at the same location. Or
+you should overwrite the location of the data when reproducing.
+
 ### Configuration file format
 There are three special sections reserved for expyrun in the yaml files:
 
@@ -88,7 +98,7 @@ Let's assume the following architecture
 Different experiments can be launch in experiments package. (One file by experiment). And some code is shared between experiments,
 for instance the code handling the data.
 
-A simple way to create the configuration files would be to create a new configs directory following roughly the architecture of the code7
+A simple way to create the configuration files would be to create a new configs directory following roughly the architecture of the code
 - my_project/
     - configs/
         - data.yml
@@ -121,6 +131,7 @@ model:
     name: MyModel
 
 training:
+    seed: "{seed}"  # Have to add "" when starting with { char
     lr: 0.001
     batch_size: 10
 ```
@@ -132,6 +143,7 @@ __default__: ./first_method.yml
 
 __run__:
     __main__: my_code.experiments.second_method:main
+    __name__: second_method/{model.name}-{training.size}
 
 seed: 777
 
@@ -152,6 +164,51 @@ $ expyrun configs/experiments/second_method.yml --training.size 15,15
 ```
 
 Have a look at `example` folder which implements another simple example.
+
+After running these two experiments $OUTPUT_DIR is filled this way:
+- $OUTPUT_DIR/
+    - first_method/
+        - MyModel-0.0001/
+            - exp.0/
+                - config.yml
+                - frozen_requirements.txt
+                - my_code/
+                - outputs.log
+                - raw_config.yml
+    - second_method/
+        - MyModelBis-[10,10]/
+            - exp.0/
+                - config.yml
+                - frozen_requirements.txt
+                - my_code/
+                - outputs.log
+                - raw_config.yml
+
+If you want to execute them again precisely, you should build a new environement
+from the frozen_requirements. Then execute expyrun with the config.yml file.
+
+If you just want to start from an experiment and change some hyperparameters,
+you can use the raw_config.yml file and use args in command-line to overwrite
+what you want. (raw_config is the unparsed config. Therefore if you change
+some hyperparameters, other values might change too.)
+
+```bash
+# Reproduce and change existing experiments
+$ expyrun $OUTPUT_DIR/first_method/MyModel-0.0001/config.yml
+$ expyrun $OUTPUT_DIR/first_method/MyModel-0.0001/raw_config.yml --training.lr 0.001  # Name will be format with the new value of lr
+```
+
+After running these two lines here is the output tree
+- $OUTPUT_DIR/
+    - first_method/
+        - MyModel-0.0001/
+            - exp.0/
+            - exp.1/
+        - MyModel-0.001/
+            - exp.0/
+    - second_method/
+        - MyModelBis-[10,10]/
+            - exp.0/
 
 ## Build and Deploy
 
