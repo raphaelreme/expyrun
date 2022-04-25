@@ -31,6 +31,7 @@ import importlib
 import os
 import pathlib
 import sys
+import traceback
 from typing import Dict, cast, List, TextIO, Union
 import warnings
 
@@ -214,15 +215,20 @@ def main(cfg: config.Config, debug: bool):
     _main = getattr(module, func_name)
 
     # FIXME: Hacky output redirection. (Not reliable. Should find a better way)
-    with open(output_dir / "outputs.log", "w") as log_file:
-        sys.stdout = MultiIO([sys.stdout, log_file])  # type: ignore
-        sys.stderr = MultiIO([sys.stderr, log_file])  # type: ignore
+    log_file = open(output_dir / "outputs.log", "w")  # pylint: disable=consider-using-with
+    sys.stdout = MultiIO([sys.stdout, log_file])  # type: ignore
+    sys.stderr = MultiIO([sys.stderr, log_file])  # type: ignore
 
-        # Launch the experiment
+    # Launch the experiment
+    try:
         _main(experiment_name, cfg)
-
+    except:  # pylint: disable=bare-except
+        log_file.write(traceback.format_exc())  # Ensure the exception is written in the file
+        raise
+    finally:
         sys.stdout = sys.stdout.ios[0]
         sys.stderr = sys.stderr.ios[0]
+        log_file.close()
 
 
 def entry_point() -> None:
