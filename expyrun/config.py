@@ -17,6 +17,7 @@ import warnings
 
 import yaml
 
+
 Value = Union[bool, int, float, str]
 
 Config = Dict[str, Union[Value, List[Value], "Config"]]  # type: ignore
@@ -285,13 +286,15 @@ class Parser:
         # SKip as much as possible parsing as I coded it badly
         if "$" in value:
             value = self.replace_env_reference(value)
+            if not isinstance(value, str):
+                return value
 
         if "{" in value:
             value = self.replace_self_reference(value)
 
-        return convert_if_possible(value)
+        return value
 
-    def replace_env_reference(self, value: str) -> str:
+    def replace_env_reference(self, value: str) -> Union[Value, List[Value]]:
         def env_replace(match):
             env_key = match.group(1)
             if env_key in os.environ:
@@ -301,9 +304,9 @@ class Parser:
 
         value = re.sub(self.ENV_VAR_REGEXP, env_replace, value)
         value = re.sub(self.ENV_VAR_REGEXP_BRACKET, env_replace, value)
-        return value
+        return convert_if_possible(value)
 
-    def replace_self_reference(self, value: str) -> str:
+    def replace_self_reference(self, value: str) -> Union[Value, List[Value]]:
         def self_replace(match):
             key = match.group(1)
             if key in self.config:
@@ -311,6 +314,14 @@ class Parser:
                 return str(self.config[key])
             warnings.warn(f"Unable to resolve reference {key}.")
             return ""
+
+        # Handle full match differently to cast to the right value
+        match = re.fullmatch(self.SELF_REF_REGEXP, value)
+        if match:
+            key = match.group(1)
+            if key in self.config:
+                self.parse_key(key)
+                return copy.deepcopy(self.config[key])  # Keep type if full match
 
         value = re.sub(self.SELF_REF_REGEXP, self_replace, value)
         return value
