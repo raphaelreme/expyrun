@@ -16,22 +16,17 @@ When an experiment is launched:
    You can therefore write directly in the current directory in the main function.
 5- Finally the main function is loaded and run.
 
-WARNING:
-    In the current version, a wrapper around stdout and stderr redirects logs into a file.
-    It's ugly and can probably broke some codes
-
-
 In DEBUG mode, the code is not copied in the output dir, the code is directly run from the current
 directory
 """
 
 
 import argparse
+import atexit
 import importlib
 import os
 import pathlib
 import sys
-import traceback
 from typing import Dict, cast, List, TextIO, Union
 import warnings
 
@@ -43,25 +38,54 @@ from . import config
 CODE_FILES_EXTENSIONS = [".py"]
 
 
-class MultiIO(TextIO):  # pylint: disable=abstract-method
-    """Small hacky multi IO writer"""
+class StdMultiplexer:
+    """Patch a writable text stream and multiplexes the outputs to several others
 
-    def __init__(self, ios: List[TextIO]):
+    Only write and flush are redirected. Other actions are done only on the main stream.
+    It will therefore have the same properties as the main stream.
+    """
+
+    def __init__(self, main_stream: TextIO, ios: List[TextIO]):
+        self.main_stream = main_stream
         self.ios = ios
 
-    def write(self, s: str) -> int:
-        ret = 0
+    def write(self, string: str) -> int:
+        ret = self.main_stream.write(string)
+
         for io_ in self.ios:
-            ret = io_.write(s)
+            io_.write(string)
+
         return ret
 
     def flush(self) -> None:
+        self.main_stream.flush()
+
         for io_ in self.ios:
             io_.flush()
 
-    def close(self) -> None:
-        for io_ in self.ios:
-            io_.close()
+    def __getattr__(self, attr: str):
+        return getattr(self.main_stream, attr)
+
+
+class StdFileRedirection:
+    """Multiplexes stdout and stderr to a file
+
+    The code could potentially break other libraries trying to redirects sys.stdout and sys.stderr.
+    It has been made compatible with Neptune. Any improvements are welcome.
+    """
+
+    def __init__(self, path: pathlib.Path) -> None:
+        self.file = open(path, "w")  # pylint: disable=consider-using-with
+        self.stdout = StdMultiplexer(sys.stdout, [self.file])
+        self.stderr = StdMultiplexer(sys.stderr, [self.file])
+        sys.stdout = self.stdout  # type: ignore
+        sys.stderr = self.stderr  # type: ignore
+        atexit.register(self.close)
+
+    def close(self):
+        sys.stdout = self.stdout.main_stream
+        sys.stderr = self.stderr.main_stream
+        self.file.close()
 
 
 def convert_as(default: Union[config.Value, List[config.Value]], arg: str) -> Union[config.Value, List[config.Value]]:
@@ -207,6 +231,7 @@ def main(cfg: config.Config, debug: bool):
     (output_dir / "frozen_requirements.txt").write_text("\n".join(freeze.freeze()))
 
     os.chdir(output_dir)
+    StdFileRedirection(output_dir / "outputs.log")
 
     cfg.pop("__run__")
 
@@ -214,21 +239,8 @@ def main(cfg: config.Config, debug: bool):
     module = importlib.import_module(module_name)
     _main = getattr(module, func_name)
 
-    # FIXME: Hacky output redirection. (Not reliable. Should find a better way)
-    log_file = open(output_dir / "outputs.log", "w")  # pylint: disable=consider-using-with
-    sys.stdout = MultiIO([sys.stdout, log_file])  # type: ignore
-    sys.stderr = MultiIO([sys.stderr, log_file])  # type: ignore
-
     # Launch the experiment
-    try:
-        _main(experiment_name, cfg)
-    except:  # pylint: disable=bare-except
-        log_file.write(traceback.format_exc())  # Ensure the exception is written in the file
-        raise
-    finally:
-        sys.stdout = sys.stdout.ios[0]
-        sys.stderr = sys.stderr.ios[0]
-        log_file.close()
+    _main(experiment_name, cfg)
 
 
 def entry_point() -> None:
