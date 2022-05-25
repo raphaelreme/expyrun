@@ -230,16 +230,19 @@ def main(cfg: config.Config, debug: bool):
     config.save_config(raw_cfg, output_dir / "raw_config.yml")
     (output_dir / "frozen_requirements.txt").write_text("\n".join(freeze.freeze()))
 
+    # Save the previous cwd in case it is really needed
+    os.environ["EXPYRUN_CWD"] = os.getcwd()
     os.chdir(output_dir)
-    StdFileRedirection(output_dir / "outputs.log")
 
-    cfg.pop("__run__")
+    # Redirects logs
+    StdFileRedirection(output_dir / "outputs.log")
 
     # Find the main function. Should take the name and the configuration as input
     module = importlib.import_module(module_name)
     _main = getattr(module, func_name)
 
     # Launch the experiment
+    cfg.pop("__run__")
     _main(experiment_name, cfg)
 
 

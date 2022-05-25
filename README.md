@@ -235,6 +235,12 @@ After running these two lines here is the output tree:
         - MyModelBis-[10,10]/
             - exp.0/
 
+
+## Environment variables used by Expyrun
+
+- `EXPYRUN_CWD`: Working directory when expyrun has been launched. Expyrun will set this variable before changing to the real working directory.
+    Can be useful to know exactly where we came from.
+
 ## Build and Deploy
 
 ```bash
