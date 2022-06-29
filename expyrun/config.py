@@ -33,7 +33,7 @@ def load_config(config_file: Union[str, pathlib.Path]) -> Config:
         Config: The loaded configuration. Parsing is not performed at loading time.
     """
     path = pathlib.Path(config_file)
-    cfg: Config = yaml.safe_load(path.read_text())
+    cfg: Config = yaml.safe_load(path.read_text(encoding="utf-8"))
 
     try:
         defaults = cast(Union[str, List[str]], cfg.pop("__default__"))
@@ -68,7 +68,7 @@ def save_config(cfg: Config, config_file: Union[str, pathlib.Path]) -> None:
         config_file (Union[str, Path]): Save to this destination
     """
     path = pathlib.Path(config_file)
-    path.write_text(yaml.safe_dump(cfg))
+    path.write_text(yaml.safe_dump(cfg), encoding="utf-8")
 
 
 def config_flatten(cfg: Config) -> Dict[str, Union[Value, List[Value]]]:
@@ -254,12 +254,20 @@ class Parser:
         self.parsed: Set[str] = set()
 
     def parse(self) -> Config:
+        """Parse each key/value of the configuration"""
         for key in self.config:  # Flatten, there is only one level
             self.parse_key(key)
 
         return config_unflatten(self.config)
 
     def parse_key(self, key: str):
+        """Parse a single key/value of the configuration
+
+        (can lead to other keys being parsed if the value depends on them)
+
+        Args:
+            key (str): Key of the value to parse
+        """
         if key in self.parsed:
             return
 
@@ -273,10 +281,18 @@ class Parser:
         self.parsed.add(key)
 
     def format(self, value: Union[Value, List[Value]]) -> Union[Value, List[Value]]:
+        """Parse and format a value
+
+        Args:
+            value (Union[Value, List[Value]]): A value to parse
+
+        Returns:
+            Union[Value, List[Value]]: Parsed value
+        """
         if isinstance(value, list):
             return list(map(self.format, value))  # type: ignore
 
-        if not isinstance(value, str):
+        if not isinstance(value, str):  # Only strings can be parsed
             return value
 
         # Allow a simple directive to prevent parsing
@@ -295,6 +311,15 @@ class Parser:
         return value
 
     def replace_env_reference(self, value: str) -> Union[Value, List[Value]]:
+        """Solve environment variables references for the given value
+
+        Args:
+            value (str): String to parse
+
+        Returns
+            Union[Value, List[Value]]: Parsed value (converted if possible)
+        """
+
         def env_replace(match):
             env_key = match.group(1)
             if env_key in os.environ:
@@ -307,6 +332,15 @@ class Parser:
         return convert_if_possible(value)
 
     def replace_self_reference(self, value: str) -> Union[Value, List[Value]]:
+        """Solve configuration references for the given value
+
+        Args:
+            value (str): String to parse
+
+        Returns
+            Union[Value, List[Value]]: Parsed value (converted if total match)
+        """
+
         def self_replace(match):
             key = match.group(1)
             if key in self.config:

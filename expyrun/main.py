@@ -50,6 +50,7 @@ class StdMultiplexer:
         self.ios = ios
 
     def write(self, string: str) -> int:
+        """Write to all the streams"""
         ret = self.main_stream.write(string)
 
         for io_ in self.ios:
@@ -58,6 +59,7 @@ class StdMultiplexer:
         return ret
 
     def flush(self) -> None:
+        """Flush all the streams"""
         self.main_stream.flush()
 
         for io_ in self.ios:
@@ -75,7 +77,7 @@ class StdFileRedirection:
     """
 
     def __init__(self, path: pathlib.Path) -> None:
-        self.file = open(path, "w")  # pylint: disable=consider-using-with
+        self.file = open(path, "w", encoding="utf-8")  # pylint: disable=consider-using-with
         self.stdout = StdMultiplexer(sys.stdout, [self.file])
         self.stderr = StdMultiplexer(sys.stderr, [self.file])
         sys.stdout = self.stdout  # type: ignore
@@ -83,6 +85,7 @@ class StdFileRedirection:
         atexit.register(self.close)
 
     def close(self):
+        """Close the std file redirection (Reset sys.stdout/sys.stderr)"""
         sys.stdout = self.stdout.main_stream
         sys.stderr = self.stderr.main_stream
         self.file.close()
@@ -228,7 +231,7 @@ def main(cfg: config.Config, debug: bool):
 
     config.save_config(cfg, output_dir / "config.yml")
     config.save_config(raw_cfg, output_dir / "raw_config.yml")
-    (output_dir / "frozen_requirements.txt").write_text("\n".join(freeze.freeze()))
+    (output_dir / "frozen_requirements.txt").write_text("\n".join(freeze.freeze()), encoding="utf-8")
 
     # Save the previous cwd in case it is really needed
     os.environ["EXPYRUN_CWD"] = os.getcwd()
@@ -247,6 +250,7 @@ def main(cfg: config.Config, debug: bool):
 
 
 def entry_point() -> None:
+    """expyrun entry point"""
     parser = argparse.ArgumentParser(description="Launch an experiment from a yaml configuration file")
     parser.add_argument(
         "config", help="Configuration file that defines the experiment. It should contain a __run__ section."
