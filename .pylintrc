@@ -86,13 +86,8 @@ disable=raw-checker-failed,
         useless-suppression,
         deprecated-pragma,
         use-symbolic-message-instead,
-        missing-function-docstring,
-        missing-class-docstring,
         missing-module-docstring,
-        too-few-public-methods,
-        cyclic-import,
         fixme,
-        unspecified-encoding,
 
 # Enable the message, report, category or checker with the given id(s). You can
 # either give multiple identifier separated by comma (,) or put this option
