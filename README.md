@@ -241,10 +241,10 @@ After running these two lines here is the output tree:
 - `EXPYRUN_CWD`: Working directory when expyrun has been launched. Expyrun will set this variable before changing to the real working directory.
     Can be useful to know exactly where we came from.
 
+
 ## Build and Deploy
 
 ```bash
-$ pip install build twine
 $ python -m build
 $ python -m twine upload dist/*
 ```

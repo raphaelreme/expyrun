@@ -1,5 +1,7 @@
 -e .
 black
+build
 mypy
 pylint
+twine
 types-pyyaml
