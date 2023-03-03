@@ -1,5 +1,7 @@
 # Expyrun
 
+[![Lint and Test](https://github.com/raphaelreme/expyrun/actions/workflows/tests.yml/badge.svg)](https://github.com/raphaelreme/expyrun/actions/workflows/tests.yml)
+
 Running reproducible experiments from a yaml configuration file.
 
 Expyrun is a command-line script that will launch your code from
