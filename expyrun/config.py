@@ -20,7 +20,7 @@ import yaml
 
 Value = Union[bool, int, float, str]
 
-Config = Dict[str, Union[Value, List[Value], "Config"]]  # type: ignore
+Config = Dict[str, Union[Value, List[Value], "Config"]]
 
 
 def load_config(config_file: Union[str, pathlib.Path]) -> Config:
@@ -104,7 +104,7 @@ def config_flatten(cfg: Config) -> Dict[str, Union[Value, List[Value]]]:
     return flattened
 
 
-def _flatten(cfg: Config, flattened: Config, prefix: str = "") -> None:
+def _flatten(cfg: Config, flattened: Dict[str, Union[Value, List[Value]]], prefix: str = "") -> None:
     for key, value in cfg.items():
         true_key = f"{prefix}.{key}"
         if not prefix:

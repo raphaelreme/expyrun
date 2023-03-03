@@ -140,7 +140,7 @@ def build_config(config_file: str, args: List[str]) -> config.Config:
         Config: The config for this run
     """
     cfg = config.load_config(config_file)
-    cfg = config.config_flatten(cfg)
+    flatten = config.config_flatten(cfg)
 
     # Parse args to build a cfg
     assert len(args) % 2 == 0, "Args should be even, missing a value or a key"
@@ -152,12 +152,12 @@ def build_config(config_file: str, args: List[str]) -> config.Config:
             key = arg[2:]
             continue
 
-        if key not in cfg:
+        if key not in flatten:
             raise KeyError(f"Unexpected key when merging args: {key}")
 
-        cfg[key] = convert_as(cfg[key], arg)
+        flatten[key] = convert_as(flatten[key], arg)
 
-    return config.config_unflatten(cfg)
+    return config.config_unflatten(flatten)
 
 
 def _code_copy(src_path: pathlib.Path, dest_path: pathlib.Path) -> None:
