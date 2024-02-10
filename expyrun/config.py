@@ -7,7 +7,6 @@ only list of values (int, float, bool, str). "." cannot be used inside a key nam
 Also some specific keys are used by this library in the root level. See README.md about this.
 """
 
-
 import copy
 import os
 import pathlib

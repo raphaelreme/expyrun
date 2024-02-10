@@ -20,7 +20,6 @@ In DEBUG mode, the code is not copied in the output dir, the code is directly ru
 directory
 """
 
-
 import argparse
 import atexit
 import importlib
