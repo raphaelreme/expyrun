@@ -75,7 +75,7 @@ class StdFileRedirection:
     It has been made compatible with Neptune. Any improvements are welcome.
     """
 
-    def __init__(self, path: pathlib.Path) -> None:
+    def __init__(self, path: Union[pathlib.Path, str]) -> None:
         self.file = open(path, "w", encoding="utf-8")  # pylint: disable=consider-using-with
         self.stdout = StdMultiplexer(sys.stdout, [self.file])
         self.stderr = StdMultiplexer(sys.stderr, [self.file])
@@ -197,6 +197,9 @@ def main(cfg: config.Config, debug: bool):
         cfg (dict): Configuration
         debug (bool): Use DEBUG mode
     """
+    # Save the current cwd in case it is really needed (Will be changed in a few lines)
+    os.environ["EXPYRUN_CWD"] = os.getcwd()
+
     raw_cfg = cfg
     cfg = config.Parser(cfg).parse()  # Resolve self and env references
 
@@ -232,12 +235,11 @@ def main(cfg: config.Config, debug: bool):
     config.save_config(raw_cfg, output_dir / "raw_config.yml")
     (output_dir / "frozen_requirements.txt").write_text("\n".join(freeze.freeze()), encoding="utf-8")
 
-    # Save the previous cwd in case it is really needed
-    os.environ["EXPYRUN_CWD"] = os.getcwd()
+    # Execute inside output_dir
     os.chdir(output_dir)
 
     # Redirects logs
-    StdFileRedirection(output_dir / "outputs.log")
+    StdFileRedirection("outputs.log")
 
     # Find the main function. Should take the name and the configuration as input
     module = importlib.import_module(module_name)
