@@ -25,11 +25,10 @@ import atexit
 import importlib
 import os
 import pathlib
+import subprocess
 import sys
 from typing import Dict, cast, List, TextIO, Union
 import warnings
-
-from pip._internal.operations import freeze
 
 from . import config
 
@@ -190,6 +189,14 @@ def duplicate_code(code_dir: pathlib.Path, output_dir: pathlib.Path, module_name
     _code_copy(package_path, output_dir)
 
 
+def save_requirements(output_dir: pathlib.Path) -> None:
+    """Save the requirements using pip freeze into a requirements.txt"""
+    subprocess.run("pip freeze > requirements.txt", check=False, cwd=output_dir, shell=True)
+    # OLD: Importing pip blocks setuptools (cf : https://github.com/pypa/setuptools/issues/3044)
+    # from pip._internal.operations import freeze
+    # (output_dir / "requirements.txt").write_text("\n".join(freeze.freeze()), encoding="utf-8")
+
+
 def main(cfg: config.Config, debug: bool):
     """Prepare and launch the experiment
 
@@ -233,7 +240,8 @@ def main(cfg: config.Config, debug: bool):
 
     config.save_config(cfg, output_dir / "config.yml")
     config.save_config(raw_cfg, output_dir / "raw_config.yml")
-    (output_dir / "frozen_requirements.txt").write_text("\n".join(freeze.freeze()), encoding="utf-8")
+
+    save_requirements(output_dir)
 
     # Execute inside output_dir
     os.chdir(output_dir)
