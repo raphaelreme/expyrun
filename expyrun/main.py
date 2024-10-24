@@ -216,6 +216,11 @@ def main(cfg: config.Config, debug: bool):
     output_dir = pathlib.Path(cast(Dict[str, str], cfg["__run__"])["__output_dir__"])
     code_dir = pathlib.Path(cast(Dict[str, str], cfg["__run__"]).get("__code__", os.getcwd()))
 
+    # Set output_dir as an absolute path
+    output_dir = output_dir.absolute()
+    cast(Dict[str, str], raw_cfg["__run__"])["__output_dir__"] = str(output_dir)
+    cast(Dict[str, str], cfg["__run__"])["__output_dir__"] = str(output_dir)
+
     # Compute true output dir
     if debug:
         output_dir = output_dir / "DEBUG" / experiment_name / "exp.0"
@@ -230,9 +235,10 @@ def main(cfg: config.Config, debug: bool):
     # Create the true output dir and fill it
     os.makedirs(output_dir, exist_ok=False)
 
-    if debug:  # In debug mode, do not copy the code
+    if debug:  # In debug mode, do not copy the code nor the requirements
         sys.path.insert(0, str(code_dir))
     else:
+        save_requirements(output_dir)
         duplicate_code(code_dir, output_dir, module_name)
         cast(Dict[str, str], raw_cfg["__run__"])["__code__"] = str(output_dir)
         cast(Dict[str, str], cfg["__run__"])["__code__"] = str(output_dir)
@@ -240,8 +246,6 @@ def main(cfg: config.Config, debug: bool):
 
     config.save_config(cfg, output_dir / "config.yml")
     config.save_config(raw_cfg, output_dir / "raw_config.yml")
-
-    save_requirements(output_dir)
 
     # Execute inside output_dir
     os.chdir(output_dir)
