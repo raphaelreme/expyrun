@@ -10,7 +10,7 @@ needed to reproduce the run.
 
 The configuration file is a yaml film with some specifications:
 - List of objects are not supported yet.
-- Environment variables are parsed and resolved. (\$MY_VAR or ${MY_VAR})
+- Environment variables are parsed and resolved. (\$\{MY_VAR\})
 - The config can reference itself, for instance, make the name of the experiment
 depending on the value of some keys. See the examples.
 
