@@ -15,7 +15,7 @@ The configuration file is a yaml film with some specifications:
 depending on the value of some keys. See the examples.
 
 
-## Install
+## 🚀 Install
 
 ### Pip
 
@@ -23,10 +23,14 @@ depending on the value of some keys. See the examples.
 $ pip install expyrun
 ```
 
-### Conda
 
-Not available yet
+### From source
 
+```bash
+git clone git@github.com:raphaelreme/expyrun.git  # OR https://github.com/raphaelreme/expyrun.git
+cd expyrun
+pip install .
+```
 
 ## Getting started
 
@@ -242,11 +246,3 @@ After running these two lines here is the output tree:
 
 - `EXPYRUN_CWD`: Working directory when expyrun has been launched. Expyrun will set this variable before changing to the real working directory.
     Can be useful to know exactly where we came from.
-
-
-## Build and Deploy
-
-```bash
-$ python -m build
-$ python -m twine upload dist/*
-```

@@ -1,11 +1,11 @@
-"""Run the code with expyrun
+"""Run the code with expyrun.
 
 ```bash
 $ DATA_FOLDER=/root/data expyrun config/example.yml
 ```
 """
 
-import os
+import pathlib
 import sys
 
 import yaml
@@ -16,7 +16,7 @@ def main(name: str, config: dict) -> None:
     print("-----------------CFG-------------------")
     print(yaml.dump(config))
     print("-----------------CWD-------------------")
-    print(os.getcwd())
+    print(pathlib.Path.cwd())
     print("---------------__file__----------------")
     print(__file__)
     print("-----------------PATH------------------")

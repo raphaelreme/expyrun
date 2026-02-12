@@ -1,4 +1,4 @@
-"""Run experiment given a configuration file
+"""Run experiment given a configuration file.
 
 The config is expected to have a special `__run__` section.
 
@@ -27,28 +27,27 @@ import os
 import pathlib
 import subprocess
 import sys
-from typing import Dict, cast, List, TextIO, Union
 import warnings
+from typing import TextIO, cast
 
 from . import config
-
 
 CODE_FILES_EXTENSIONS = [".py"]
 
 
 class StdMultiplexer:
-    """Patch a writable text stream and multiplexes the outputs to several others
+    """Patch a writable text stream and multiplexes the outputs to several others.
 
     Only write and flush are redirected. Other actions are done only on the main stream.
     It will therefore have the same properties as the main stream.
     """
 
-    def __init__(self, main_stream: TextIO, ios: List[TextIO]):
+    def __init__(self, main_stream: TextIO, ios: list[TextIO]):
         self.main_stream = main_stream
         self.ios = ios
 
     def write(self, string: str) -> int:
-        """Write to all the streams"""
+        """Write to all the streams."""
         ret = self.main_stream.write(string)
 
         for io_ in self.ios:
@@ -57,55 +56,56 @@ class StdMultiplexer:
         return ret
 
     def flush(self) -> None:
-        """Flush all the streams"""
+        """Flush all the streams."""
         self.main_stream.flush()
 
         for io_ in self.ios:
             io_.flush()
 
-    def __getattr__(self, attr: str):
+    def __getattr__(self, attr: str):  # noqa: ANN204
+        """Redirect all other attributes to the main stream."""
         return getattr(self.main_stream, attr)
 
 
 class StdFileRedirection:
-    """Multiplexes stdout and stderr to a file
+    """Multiplexes stdout and stderr to a file.
 
     The code could potentially break other libraries trying to redirects sys.stdout and sys.stderr.
     It has been made compatible with Neptune. Any improvements are welcome.
     """
 
-    def __init__(self, path: Union[pathlib.Path, str]) -> None:
-        self.file = open(path, "w", encoding="utf-8")  # pylint: disable=consider-using-with
+    def __init__(self, path: str | os.PathLike) -> None:
+        self.file = pathlib.Path(path).open("w", encoding="utf-8")  # noqa: SIM115
         self.stdout = StdMultiplexer(sys.stdout, [self.file])
         self.stderr = StdMultiplexer(sys.stderr, [self.file])
-        sys.stdout = self.stdout  # type: ignore
-        sys.stderr = self.stderr  # type: ignore
+        sys.stdout = self.stdout
+        sys.stderr = self.stderr
         atexit.register(self.close)
 
     def close(self):
-        """Close the std file redirection (Reset sys.stdout/sys.stderr)"""
+        """Close the std file redirection (Reset sys.stdout/sys.stderr)."""
         sys.stdout = self.stdout.main_stream
         sys.stderr = self.stderr.main_stream
         self.file.close()
 
 
-def convert_as(default: Union[config.Value, List[config.Value]], arg: str) -> Union[config.Value, List[config.Value]]:
-    """Convert the argument to the same type found in the config
+def convert_as(default: config.Value | list[config.Value], arg: str) -> config.Value | list[config.Value]:
+    """Convert the argument to the same type found in the config.
 
     Args:
-        original (Union[Value, List[Value]]): Default value in the config file
+        default (config.Value | list[config.Value]): Default value in the config file
         arg (str): Argument value
 
     Returns:
-        Union[Value, List[Value]]: The converted value
+        config.Value | list[config.Value]: The converted value
     """
     if isinstance(default, list):
         values = arg.split(",")
         if len(values) != len(default):
             if len(default) > 0:
-                return [cast(config.Value, convert_as(default[0], value)) for value in values]
+                return [cast("config.Value", convert_as(default[0], value)) for value in values]
             return [config.convert_if_possible(value) for value in values]
-        return [cast(config.Value, convert_as(default[j], value)) for j, value in enumerate(values)]
+        return [cast("config.Value", convert_as(default[j], value)) for j, value in enumerate(values)]
 
     if isinstance(default, bool):
         if arg.lower() in {"false", "0"}:
@@ -125,12 +125,12 @@ def convert_as(default: Union[config.Value, List[config.Value]], arg: str) -> Un
     return converted
 
 
-def build_config(config_file: str, args: List[str]) -> config.Config:
-    """Build the configuration given a config file and extra args
+def build_config(config_file: str, args: list[str]) -> config.Config:
+    """Build the configuration given a config file and extra args.
 
     Args:
         config_file (str): path to configuration file
-        args (List[str]): List of additional args
+        args (list[str]): List of additional args
             Expected format: [--my.entire.key, value, --my.other.key, other_value, ...]
             This feature support only simple types (converted with `convert_as`)
 
@@ -141,12 +141,14 @@ def build_config(config_file: str, args: List[str]) -> config.Config:
     flatten = config.config_flatten(cfg)
 
     # Parse args to build a cfg
-    assert len(args) % 2 == 0, "Args should be even, missing a value or a key"
+    if len(args) % 2 != 0:
+        raise ValueError("# Args should be even => missing a value or a key")
 
     key = ""
     for i, arg in enumerate(args):
         if i % 2 == 0:
-            assert arg[:2] == "--", "Expected key format: --my.entire.key"
+            if arg[:2] != "--":
+                raise ValueError("Expected key format: --my.entire.key")
             key = arg[2:]
             continue
 
@@ -159,7 +161,7 @@ def build_config(config_file: str, args: List[str]) -> config.Config:
 
 
 def _code_copy(src_path: pathlib.Path, dest_path: pathlib.Path) -> None:
-    """Probably inefficient folder search but do the job"""
+    """Probably inefficient folder search but do the job."""
     dest_path = dest_path / src_path.name
     if dest_path.exists():
         raise RuntimeError("Copying files into an existing location...")
@@ -170,7 +172,7 @@ def _code_copy(src_path: pathlib.Path, dest_path: pathlib.Path) -> None:
         return
 
     if not src_path.is_dir():
-        warnings.warn(f"Unhandled path in code duplication: {src_path}")
+        warnings.warn(f"Unhandled path in code duplication: {src_path}", stacklevel=2)
 
     dest_path.mkdir()  # Can create empty dir, but fine
     for child_path in src_path.iterdir():
@@ -190,42 +192,40 @@ def duplicate_code(code_dir: pathlib.Path, output_dir: pathlib.Path, module_name
 
 
 def save_requirements(output_dir: pathlib.Path) -> None:
-    """Save the requirements using pip freeze into a requirements.txt"""
-    subprocess.run("pip freeze > requirements.txt", check=False, cwd=output_dir, shell=True)
+    """Save the requirements using pip freeze into a requirements.txt."""
+    # XXX: Not robust, could be improved?
+    subprocess.run("pip freeze > requirements.txt", check=False, cwd=output_dir, shell=True)  # noqa: S602, S607
     # OLD: Importing pip blocks setuptools (cf : https://github.com/pypa/setuptools/issues/3044)
-    # from pip._internal.operations import freeze
-    # (output_dir / "requirements.txt").write_text("\n".join(freeze.freeze()), encoding="utf-8")
+    # >> from pip._internal.operations import freeze
+    # >> (output_dir / "requirements.txt").write_text("\n".join(freeze.freeze()), encoding="utf-8")
 
 
-def main(cfg: config.Config, debug: bool):
-    """Prepare and launch the experiment
+def main(cfg: config.Config, debug: bool) -> None:
+    """Prepare and launch the experiment.
 
     Args:
         cfg (dict): Configuration
         debug (bool): Use DEBUG mode
     """
     # Save the current cwd in case it is really needed (Will be changed in a few lines)
-    os.environ["EXPYRUN_CWD"] = os.getcwd()
+    os.environ["EXPYRUN_CWD"] = str(pathlib.Path.cwd())
 
     raw_cfg = cfg
     cfg = config.Parser(cfg).parse()  # Resolve self and env references
 
     # Load the run data
-    module_name, func_name = cast(Dict[str, str], cfg["__run__"])["__main__"].split(":")
-    experiment_name = cast(Dict[str, str], cfg["__run__"])["__name__"]
-    output_dir = pathlib.Path(cast(Dict[str, str], cfg["__run__"])["__output_dir__"])
-    code_dir = pathlib.Path(cast(Dict[str, str], cfg["__run__"]).get("__code__", os.getcwd()))
+    module_name, func_name = cast("dict[str, str]", cfg["__run__"])["__main__"].split(":")
+    experiment_name = cast("dict[str, str]", cfg["__run__"])["__name__"]
+    output_dir = pathlib.Path(cast("dict[str, str]", cfg["__run__"])["__output_dir__"])
+    code_dir = pathlib.Path(cast("dict[str, str]", cfg["__run__"]).get("__code__", str(pathlib.Path.cwd())))
 
     # Set output_dir as an absolute path
     output_dir = output_dir.absolute()
-    cast(Dict[str, str], raw_cfg["__run__"])["__output_dir__"] = str(output_dir)
-    cast(Dict[str, str], cfg["__run__"])["__output_dir__"] = str(output_dir)
+    cast("dict[str, str]", raw_cfg["__run__"])["__output_dir__"] = str(output_dir)
+    cast("dict[str, str]", cfg["__run__"])["__output_dir__"] = str(output_dir)
 
     # Compute true output dir
-    if debug:
-        output_dir = output_dir / "DEBUG" / experiment_name / "exp.0"
-    else:
-        output_dir = output_dir / experiment_name / "exp.0"
+    output_dir = output_dir / "DEBUG" / experiment_name / "exp.0" if debug else output_dir / experiment_name / "exp.0"
 
     i = 0
     while output_dir.exists():
@@ -233,15 +233,15 @@ def main(cfg: config.Config, debug: bool):
         output_dir = output_dir.with_suffix(f".{i}")
 
     # Create the true output dir and fill it
-    os.makedirs(output_dir, exist_ok=False)
+    pathlib.Path.mkdir(output_dir, parents=True, exist_ok=False)
 
     if debug:  # In debug mode, do not copy the code nor the requirements
         sys.path.insert(0, str(code_dir))
     else:
         save_requirements(output_dir)
         duplicate_code(code_dir, output_dir, module_name)
-        cast(Dict[str, str], raw_cfg["__run__"])["__code__"] = str(output_dir)
-        cast(Dict[str, str], cfg["__run__"])["__code__"] = str(output_dir)
+        cast("dict[str, str]", raw_cfg["__run__"])["__code__"] = str(output_dir)
+        cast("dict[str, str]", cfg["__run__"])["__code__"] = str(output_dir)
         sys.path.insert(0, str(output_dir))
 
     config.save_config(cfg, output_dir / "config.yml")
@@ -263,7 +263,7 @@ def main(cfg: config.Config, debug: bool):
 
 
 def entry_point() -> None:
-    """expyrun entry point"""
+    """Expyrun entry point."""
     parser = argparse.ArgumentParser(description="Launch an experiment from a yaml configuration file")
     parser.add_argument(
         "config", help="Configuration file that defines the experiment. It should contain a __run__ section."
@@ -280,7 +280,7 @@ def entry_point() -> None:
 
     args = parser.parse_args()
     # Hacky counter to the behavior of argparse. Just don't use debug as a config key
-    # if --debug is specified after the config file, it will end up with additionnal args...
+    # if --debug is specified after the config file, it will end up with additional args...
     if not args.debug and "--debug" in args.args:
         args.args.remove("--debug")
         args.debug = True

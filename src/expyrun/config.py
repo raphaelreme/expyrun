@@ -1,4 +1,4 @@
-"""Handle yaml configuration files
+"""Handle yaml configuration files.
 
 Read a yaml file and convert it into a dict.
 The format is a bit more restrictive than yaml, you cannot build list of Objects,
@@ -11,22 +11,21 @@ import copy
 import os
 import pathlib
 import re
-from typing import Set, cast, Dict, List, Union
 import warnings
+from typing import Union, cast
 
 import yaml
 
+Value = bool | int | float | str
 
-Value = Union[bool, int, float, str]
-
-Config = Dict[str, Union[Value, List[Value], "Config"]]
+Config = dict[str, Union[Value, list[Value], "Config"]]
 
 
-def load_config(config_file: Union[str, pathlib.Path]) -> Config:
-    """Load a configuration from a given file
+def load_config(config_file: str | os.PathLike) -> Config:
+    """Load a configuration from a given file.
 
     Args:
-        config_file (Union[str, Path]): The configuration file name
+        config_file (str | os.PathLike): The configuration file name
 
     Returns:
         Config: The loaded configuration. Parsing is not performed at loading time.
@@ -35,7 +34,7 @@ def load_config(config_file: Union[str, pathlib.Path]) -> Config:
     cfg: Config = yaml.safe_load(path.read_text(encoding="utf-8"))
 
     try:
-        defaults = cast(Union[str, List[str]], cfg.pop("__default__"))
+        defaults = cast("str | list[str]", cfg.pop("__default__"))
     except KeyError:
         return cfg
 
@@ -54,24 +53,22 @@ def load_config(config_file: Union[str, pathlib.Path]) -> Config:
         else:  # Relative to the current config
             default_cfg = merge(default_cfg, load_config(path.parent / default_path), "pass")
 
-    cfg = merge(default_cfg, cfg, new_key_policy)
-
-    return cfg
+    return merge(default_cfg, cfg, new_key_policy)
 
 
-def save_config(cfg: Config, config_file: Union[str, pathlib.Path]) -> None:
-    """Save the configuration
+def save_config(cfg: Config, config_file: str | os.PathLike) -> None:
+    """Save the configuration.
 
     Args:
         cfg (Config): Configuration to save
-        config_file (Union[str, Path]): Save to this destination
+        config_file (str | os.PathLike): Save to this destination
     """
     path = pathlib.Path(config_file)
     path.write_text(yaml.safe_dump(cfg), encoding="utf-8")
 
 
-def config_flatten(cfg: Config) -> Dict[str, Union[Value, List[Value]]]:
-    """Flatten a config
+def config_flatten(cfg: Config) -> dict[str, Value | list[Value]]:
+    """Flatten a config.
 
     {
         "hello": {
@@ -97,13 +94,13 @@ def config_flatten(cfg: Config) -> Dict[str, Union[Value, List[Value]]]:
     Returns:
         Config: The flattened config
     """
-    flattened: Dict[str, Union[Value, List[Value]]] = {}
+    flattened: dict[str, Value | list[Value]] = {}
     _flatten(cfg, flattened)
 
     return flattened
 
 
-def _flatten(cfg: Config, flattened: Dict[str, Union[Value, List[Value]]], prefix: str = "") -> None:
+def _flatten(cfg: Config, flattened: dict[str, Value | list[Value]], prefix: str = "") -> None:
     for key, value in cfg.items():
         true_key = f"{prefix}.{key}"
         if not prefix:
@@ -120,13 +117,13 @@ def _flatten(cfg: Config, flattened: Dict[str, Union[Value, List[Value]]], prefi
         flattened[true_key] = value
 
 
-def config_unflatten(cfg: Dict[str, Union[Value, List[Value]]]) -> Config:
-    """Unflatten a config (Reverse flatten)
+def config_unflatten(cfg: dict[str, Value | list[Value]]) -> Config:
+    """Unflatten a config (Reverse flatten).
 
-    Key containing "." are split. And sub dictionnaries are created.
+    Key containing "." are split. And sub dictionaries are created.
 
     Args:
-        cfg (Dict[str, Union[Value, List[Value]]]): The config to unflatten.
+        cfg (dict[str, Value | list[Value]]): The config to unflatten.
 
     Returns:
         Config: The unflattened config
@@ -145,7 +142,7 @@ def config_unflatten(cfg: Dict[str, Union[Value, List[Value]]]) -> Config:
             if isinstance(next_cfg, dict):
                 current_cfg = next_cfg
             else:
-                raise ValueError(f"Key {key} is already set. Can't override it (Found a value for {k})")
+                raise ValueError(f"Key {key} is already set. Can't override it (Found a value for {k})")  # noqa: TRY004
 
         k = keys[-1]
         if k in current_cfg:
@@ -171,21 +168,22 @@ def merge(cfg_1: Config, cfg_2: Config, new_key_policy="warn") -> Config:
     Returns:
         Config: The merged configuration
     """
-    assert new_key_policy in ["raise", "warn", "pass"]
+    if new_key_policy not in ["raise", "warn", "pass"]:
+        raise ValueError(f"Unknown `new_key_policy`: {new_key_policy} not in [raise, warn, pass].")
 
     cfg = copy.deepcopy(cfg_1)
 
     for key, value in cfg_2.items():
-        value = copy.deepcopy(value)
+        value = copy.deepcopy(value)  # noqa: PLW2901
 
         if key not in cfg:
-            if "__" == key[:2]:  # Allow specific keys to be new
+            if key[:2] == "__":  # Allow specific keys to be new
                 cfg[key] = value
                 continue
             if new_key_policy == "raise":
                 raise KeyError(f"Unexpected key when merging configs: {key}")
             if new_key_policy == "warn":
-                warnings.warn(f"Adding new key to configuration: {key}")
+                warnings.warn(f"Adding new key to configuration: {key}", stacklevel=2)
             cfg[key] = value
             continue
 
@@ -193,14 +191,15 @@ def merge(cfg_1: Config, cfg_2: Config, new_key_policy="warn") -> Config:
 
         if not isinstance(value, type(previous_value)):
             warnings.warn(
-                f"Key `{key}` has been overloaded with a different type: {type(previous_value)} -> {type(value)}"
+                f"Key `{key}` has been overloaded with a different type: {type(previous_value)} -> {type(value)}",
+                stacklevel=2,
             )
             cfg[key] = value
             continue
 
         # Same type. If dict, let's merge, if not just replace
         if isinstance(previous_value, dict):
-            cfg[key] = merge(previous_value, cast(dict, value), new_key_policy)
+            cfg[key] = merge(previous_value, cast("dict", value), new_key_policy)
         else:
             cfg[key] = value
 
@@ -208,10 +207,10 @@ def merge(cfg_1: Config, cfg_2: Config, new_key_policy="warn") -> Config:
 
 
 def convert_if_possible(value: str) -> Value:
-    """Try to convert the string to another type if possible
+    """Try to convert the string to another type if possible.
 
     Try to convert as much a possible without losing information.
-    You should probably use dataclass with dacite to ensure that eveything is well typed
+    You should probably use dataclass with dacite to ensure that everything is well typed
 
     Args:
         value (str): Value to be converted
@@ -233,11 +232,11 @@ def convert_if_possible(value: str) -> Value:
 
 
 class Parser:
-    """Parse a configuration and handles environement variables and self references
+    """Parse a configuration and handles environment variables and self references.
 
     Attrs:
-        NO_PARSE_STRING (str): Add this string to the begining of the value to prevent parsing
-        ENV_VAR_REGEXP, ENV_VAR_REGEXP_BRACKET (str): Regexp for environement variables matching
+        NO_PARSE_STRING (str): Add this string to the beginning of the value to prevent parsing
+        ENV_VAR_REGEXP, ENV_VAR_REGEXP_BRACKET (str): Regexp for environment variables matching
             A bit too simple, but will do the job
         SELF_REF_REGEXP (str): Regexp for self references. A bit permissive, but fine.
     """
@@ -249,18 +248,18 @@ class Parser:
 
     def __init__(self, config: Config) -> None:
         self.config = config_flatten(config)
-        self.parsing: Set[str] = set()
-        self.parsed: Set[str] = set()
+        self.parsing: set[str] = set()
+        self.parsed: set[str] = set()
 
     def parse(self) -> Config:
-        """Parse each key/value of the configuration"""
+        """Parse each key/value of the configuration."""
         for key in self.config:  # Flatten, there is only one level
             self.parse_key(key)
 
         return config_unflatten(self.config)
 
-    def parse_key(self, key: str):
-        """Parse a single key/value of the configuration
+    def parse_key(self, key: str) -> None:
+        """Parse a single key/value of the configuration.
 
         (can lead to other keys being parsed if the value depends on them)
 
@@ -279,26 +278,26 @@ class Parser:
         self.parsing.remove(key)
         self.parsed.add(key)
 
-    def format(self, value: Union[Value, List[Value]]) -> Union[Value, List[Value]]:
-        """Parse and format a value
+    def format(self, value: Value | list[Value]) -> Value | list[Value]:
+        """Parse and format a value.
 
         Args:
-            value (Union[Value, List[Value]]): A value to parse
+            value (Value | list[Value]): A value to parse
 
         Returns:
-            Union[Value, List[Value]]: Parsed value
+            Value | list[Value]: Parsed value
         """
-        if isinstance(value, list):
-            return list(map(self.format, value))  # type: ignore
+        if isinstance(value, list):  # XXX: Do we support list[Config] ??
+            return list(map(self.format, value))  # type: ignore[arg-type]
 
         if not isinstance(value, str):  # Only strings can be parsed
             return value
 
         # Allow a simple directive to prevent parsing
-        if self.NO_PARSE_STRING == value[: len(self.NO_PARSE_STRING)]:
+        if value[: len(self.NO_PARSE_STRING)] == self.NO_PARSE_STRING:
             return value[len(self.NO_PARSE_STRING) :]
 
-        # SKip as much as possible parsing as I coded it badly
+        # Poorly coded
         if "$" in value:
             value = self.replace_env_reference(value)
             if not isinstance(value, str):
@@ -309,35 +308,35 @@ class Parser:
 
         return value
 
-    def replace_env_reference(self, value: str) -> Union[Value, List[Value]]:
-        """Solve environment variables references for the given value
+    def replace_env_reference(self, value: str) -> Value | list[Value]:
+        """Solve environment variables references for the given value.
 
         Args:
             value (str): String to parse
 
-        Returns
-            Union[Value, List[Value]]: Parsed value (converted if possible)
+        Returns:
+            Value | list[Value]: Parsed value (converted if possible)
         """
 
         def env_replace(match):
             env_key = match.group(1)
             if env_key in os.environ:
                 return os.environ[env_key]
-            warnings.warn(f"Environment variable {env_key} not define")
+            warnings.warn(f"Environment variable {env_key} not define", stacklevel=2)
             return ""
 
         value = re.sub(self.ENV_VAR_REGEXP, env_replace, value)
         value = re.sub(self.ENV_VAR_REGEXP_BRACKET, env_replace, value)
         return convert_if_possible(value)
 
-    def replace_self_reference(self, value: str) -> Union[Value, List[Value]]:
-        """Solve configuration references for the given value
+    def replace_self_reference(self, value: str) -> Value | list[Value]:
+        """Solve configuration references for the given value.
 
         Args:
             value (str): String to parse
 
-        Returns
-            Union[Value, List[Value]]: Parsed value (converted if total match)
+        Returns:
+            Value | list[Value]: Parsed value (converted if total match)
         """
 
         def self_replace(match):
@@ -345,7 +344,7 @@ class Parser:
             if key in self.config:
                 self.parse_key(key)
                 return str(self.config[key])
-            warnings.warn(f"Unable to resolve reference {key}.")
+            warnings.warn(f"Unable to resolve reference {key}.", stacklevel=2)
             return ""
 
         # Handle full match differently to cast to the right value
@@ -356,5 +355,4 @@ class Parser:
                 self.parse_key(key)
                 return copy.deepcopy(self.config[key])  # Keep type if full match
 
-        value = re.sub(self.SELF_REF_REGEXP, self_replace, value)
-        return value
+        return re.sub(self.SELF_REF_REGEXP, self_replace, value)
