@@ -173,6 +173,7 @@ def _code_copy(src_path: pathlib.Path, dest_path: pathlib.Path) -> None:
 
     if not src_path.is_dir():
         warnings.warn(f"Unhandled path in code duplication: {src_path}", stacklevel=2)
+        return
 
     dest_path.mkdir()  # Can create empty dir, but fine
     for child_path in src_path.iterdir():

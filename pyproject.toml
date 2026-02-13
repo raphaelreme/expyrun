@@ -102,7 +102,7 @@ lint.pep8-naming.ignore-names = [
 lint.pydocstyle.convention = "google"
 
 [tool.ruff.lint.per-file-ignores]
-"tests/*.py" = ["INP001", "D103", "S101", "ANN201", "SLF001", "T201"]
+"tests/*.py" = ["INP001", "D103", "S101", "ANN201", "SLF001", "T201", "ARG001"]
 "example/src/*.py" = ["INP001", "D103", "S101", "ANN201", "SLF001", "T201", "NPY002", "ERA001"]
 
 

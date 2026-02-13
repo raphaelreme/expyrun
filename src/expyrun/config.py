@@ -102,9 +102,7 @@ def config_flatten(cfg: Config) -> dict[str, Value | list[Value]]:
 
 def _flatten(cfg: Config, flattened: dict[str, Value | list[Value]], prefix: str = "") -> None:
     for key, value in cfg.items():
-        true_key = f"{prefix}.{key}"
-        if not prefix:
-            true_key = key
+        true_key = f"{prefix}.{key}" if prefix else key
 
         # If dict: continue with the new prefix
         if isinstance(value, dict):
@@ -113,7 +111,7 @@ def _flatten(cfg: Config, flattened: dict[str, Value | list[Value]], prefix: str
 
         # Else: Let's register the value
         if true_key in flattened:
-            raise ValueError(f"{true_key} is already set. Should not override it")
+            raise ValueError(f"Duplicate key: {true_key}. Can't override it")
         flattened[true_key] = value
 
 
@@ -142,11 +140,9 @@ def config_unflatten(cfg: dict[str, Value | list[Value]]) -> Config:
             if isinstance(next_cfg, dict):
                 current_cfg = next_cfg
             else:
-                raise ValueError(f"Key {key} is already set. Can't override it (Found a value for {k})")  # noqa: TRY004
+                raise ValueError(f"Duplicated key: {key}. Can't override it. (Found a value for {k})")  # noqa: TRY004
 
         k = keys[-1]
-        if k in current_cfg:
-            raise ValueError(f"Key {key} is already set. Can't override it")
         current_cfg[k] = value
 
     return unflattened_cfg
@@ -287,7 +283,7 @@ class Parser:
         Returns:
             Value | list[Value]: Parsed value
         """
-        if isinstance(value, list):  # XXX: Do we support list[Config] ??
+        if isinstance(value, list):  # XXX: We do not support list[Config]
             return list(map(self.format, value))  # type: ignore[arg-type]
 
         if not isinstance(value, str):  # Only strings can be parsed
