@@ -264,18 +264,49 @@ def main(cfg: config.Config, debug: bool) -> None:
 
 def entry_point() -> None:
     """Expyrun entry point."""
-    parser = argparse.ArgumentParser(description="Launch an experiment from a yaml configuration file")
-    parser.add_argument(
-        "config", help="Configuration file that defines the experiment. It should contain a __run__ section."
+    parser = argparse.ArgumentParser(
+        prog="expyrun",
+        description=(
+            "Run reproducible experiments from a YAML configuration file.\n\n"
+            "The configuration file must contain a special '__run__' section "
+            "defining the entry function, experiment name, and output directory."
+        ),
+        epilog=(
+            "Examples:\n"
+            "  expyrun config.yml\n"
+            "  expyrun config.yml --debug\n"
+            "  expyrun config.yml --training.lr 0.001\n"
+            "  expyrun config.yml --model.size 64 --training.batch_size 32\n\n"
+            "When overriding list values, use comma-separated syntax:\n"
+            "  --model.layers 64,128,256\n\n"
+            "Types are inferred from the configuration file.\n"
+            "New keys are not allowed from the command line."
+        ),
+        formatter_class=argparse.RawTextHelpFormatter,
     )
-    parser.add_argument("--debug", help="Switch to DEBUG mode. The code is not copied.", action="store_true")
+
+    parser.add_argument(
+        "config",
+        help=("Path to the YAML configuration file.\nThe file must define a '__run__' section."),
+    )
+    parser.add_argument(
+        "--debug",
+        action="store_true",
+        help=(
+            "Enable DEBUG mode.\n"
+            "In this mode, the source code is NOT copied and is executed directly "
+            "from the current working directory."
+        ),
+    )
     parser.add_argument(
         "args",
-        help="Additional arguments that overrides the configuration file\n"
-        "Expected format [--my.entire.key value] ...\n"
-        "If the expected value is an iterable, use --my.entire.key value1,value2,value3\n"
-        "Types are inferred from the configuration file. New keys are not allowed",
         nargs=argparse.REMAINDER,
+        help=(
+            "Additional arguments overriding configuration values.\n"
+            "Format: --my.entire.key value\n"
+            "Example: --training.lr 0.01\n"
+            "         --model.layers 64,128,256"
+        ),
     )
 
     args = parser.parse_args()
