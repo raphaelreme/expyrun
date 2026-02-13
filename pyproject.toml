@@ -4,7 +4,7 @@ build-backend = "uv_build"
 
 [project]
 name = "expyrun"
-version = "0.2.0"
+version = "0.2.1"
 description = "Run reproducible experiments from yaml configuration file"
 readme = "README.md"
 authors = [

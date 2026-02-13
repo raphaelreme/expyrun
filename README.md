@@ -1,7 +1,11 @@
 # Expyrun
 
-[![Lint and
-Test](https://github.com/raphaelreme/expyrun/actions/workflows/tests.yml/badge.svg)](https://github.com/raphaelreme/expyrun/actions/workflows/tests.yml)
+[![License](https://img.shields.io/github/license/raphaelreme/expyrun)](https://github.com/raphaelreme/torch-tps/raw/main/expyrun)
+[![PyPi](https://img.shields.io/pypi/v/expyrun)](https://pypi.org/project/expyrun)
+[![Python](https://img.shields.io/pypi/pyversions/expyrun)](https://pypi.org/project/expyrun)
+[![Downloads](https://img.shields.io/pypi/dm/expyrun)](https://pypi.org/project/expyrun)
+[![Codecov](https://codecov.io/github/raphaelreme/expyrun/graph/badge.svg)](https://codecov.io/github/raphaelreme/expyrun)
+[![Lint and Test](https://github.com/raphaelreme/expyrun/actions/workflows/tests.yml/badge.svg)](https://github.com/raphaelreme/expyrun/actions/workflows/tests.yml)
 
 **Run fully reproducible experiments from YAML configuration
 files.**
