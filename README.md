@@ -1,6 +1,6 @@
 # Expyrun
 
-[![License](https://img.shields.io/github/license/raphaelreme/expyrun)](https://github.com/raphaelreme/torch-tps/raw/main/expyrun)
+[![License](https://img.shields.io/github/license/raphaelreme/expyrun)](https://github.com/raphaelreme/expyrun/raw/main/LICENSE)
 [![PyPi](https://img.shields.io/pypi/v/expyrun)](https://pypi.org/project/expyrun)
 [![Python](https://img.shields.io/pypi/pyversions/expyrun)](https://pypi.org/project/expyrun)
 [![Downloads](https://img.shields.io/pypi/dm/expyrun)](https://pypi.org/project/expyrun)

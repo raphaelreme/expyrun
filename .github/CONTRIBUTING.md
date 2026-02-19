@@ -1,4 +1,4 @@
-# Contributing to Torch-TPS
+# Contributing to Expyrun
 
 First of all, **thank you for considering contributing!**
 All contributions are welcome: bug reports, documentation improvements, examples, feature requests, or code changes.
